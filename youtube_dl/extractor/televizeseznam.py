@@ -54,6 +54,7 @@ class TelevizeSeznamIE(InfoExtractor):
         formats = []
         for r, v in play_list.items():
             formats.append({
+                'format_id': r,
                 'url': urljoin(spl_url, v['url']),
                 'width': v['resolution'][0],
                 'height': v['resolution'][1],
@@ -75,8 +76,13 @@ class TelevizeSeznamIE(InfoExtractor):
             headers={'Content-Type': 'application/json;charset=UTF-8'}
         )['data']
 
-        spl_url = data['episode']['spl']
-        play_list = self._download_json(spl_url + 'spl2,3', video_id, 'Downloading playlist')['data']
+        spl_url = data['episode']['spl'] + 'spl2,3'
+        metadata, res = self._download_json_handle(spl_url, video_id, 'Downloading playlist')
+        if 'Location' in metadata and 'data' not in metadata:
+            # they sometimes wants to redirect
+            spl_url = metadata['Location']
+            metadata = self._download_json(spl_url, video_id, 'Redirected -> Downloading playlist')
+        play_list = metadata['data']
         subtitles = self.extract_subtitles(spl_url, play_list.get('subtitles'))
         formats = self.extract_formats(spl_url, play_list['mp4'], subtitles)
 
